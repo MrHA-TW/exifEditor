@@ -6,7 +6,10 @@
 
 *   **編輯作者資訊**: 新增或修改圖片的作者資訊。
 *   **編輯版權資訊**: 新增或修改圖片的版權聲明。
-*   **編輯相機型號**: 修改拍攝照片的相機型號。
+*   **編輯相機與鏡頭型號**: 
+    *   使用下拉式選單快速選取曾經輸入過的相機與鏡頭型號。
+    *   歷史紀錄會自動儲存於 `config/config.ini`。
+*   **自動更新 UserComment**: `UserComment` 欄位會根據您選擇的相機與鏡頭型號自動填入。
 *   **備份與清理**: 在修改前自動備份原始檔案，並提供腳本來清理這些備份。
 *   **設定檔**: 透過 `config.ini` 輕鬆設定預設值。
 
@@ -23,9 +26,9 @@
     ```
 
 3.  **使用介面**:
-    *   點擊 "Select Image" 選擇您想編輯的單張圖片，或點擊 "Select Directory" 選擇整個資料夾。
-    *   在 "Artist" 和 "Copyright" 欄位輸入您想要的文字。
-    *   點擊 "Update EXIF" 按鈕，程式將會更新所選圖片的 EXIF 資訊。
+    *   點擊 "Select Directory" 選擇整個資料夾。
+    *   在對應的欄位輸入或選擇您想要的 EXIF 資訊。
+    *   點擊 "Save & Start Processing" 按鈕，程式將會更新所選圖片的 EXIF 資訊。
 
 ## 相依套件
 
@@ -35,12 +38,18 @@
 
 ## 設定
 
-您可以在 `config/config.ini` 檔案中設定預設的作者和版權資訊：
+您可以在 `config/config.ini` 檔案中設定預設的 EXIF 資訊，以及相機和鏡頭的歷史紀錄：
 
 ```ini
-[DEFAULT]
+[EXIF]
 artist = Your Name
 copyright = Your Copyright
+model = Your Camera
+lensmodel = Your Lens
+
+[History]
+camera_models = Your Camera,Another Camera
+lens_models = Your Lens,Another Lens
 ```
 
 ## 授權

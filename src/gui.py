@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, scrolledtext
+from tkinter import filedialog, scrolledtext, ttk
 import configparser
 import os
 from exif_editor import process_directory
@@ -17,6 +17,12 @@ class ExifEditorGUI(tk.Tk):
         self.config = configparser.ConfigParser()
         self.config.read(self.config_path)
 
+        # Ensure History section exists
+        if not self.config.has_section('History'):
+            self.config.add_section('History')
+            self.config.set('History', 'camera_models', '')
+            self.config.set('History', 'lens_models', '')
+
         self.exif_tags = {}
         self.create_widgets()
         self.load_config()
@@ -33,9 +39,21 @@ class ExifEditorGUI(tk.Tk):
                 for key in self.config[section]:
                     label = tk.Label(exif_frame, text=key.replace('_', ' ').title())
                     label.grid(row=row, column=0, sticky="w", padx=5, pady=2)
-                    entry = tk.Entry(exif_frame, width=60)
-                    entry.grid(row=row, column=1, sticky="ew", padx=5, pady=2)
-                    self.exif_tags[key] = entry
+                    
+                    if key == 'model':
+                        self.exif_tags[key] = ttk.Combobox(exif_frame, width=57)
+                        self.exif_tags[key].grid(row=row, column=1, sticky="ew", padx=5, pady=2)
+                        self.exif_tags[key].bind('<<ComboboxSelected>>', self.update_user_comment)
+                        self.exif_tags[key].bind('<KeyRelease>', self.update_user_comment)
+                    elif key == 'lensmodel':
+                        self.exif_tags[key] = ttk.Combobox(exif_frame, width=57)
+                        self.exif_tags[key].grid(row=row, column=1, sticky="ew", padx=5, pady=2)
+                        self.exif_tags[key].bind('<<ComboboxSelected>>', self.update_user_comment)
+                        self.exif_tags[key].bind('<KeyRelease>', self.update_user_comment)
+                    else:
+                        entry = tk.Entry(exif_frame, width=60)
+                        entry.grid(row=row, column=1, sticky="ew", padx=5, pady=2)
+                        self.exif_tags[key] = entry
                     row += 1
         
         exif_frame.columnconfigure(1, weight=1)
@@ -68,17 +86,60 @@ class ExifEditorGUI(tk.Tk):
         self.log_area.pack(fill="both", expand=True)
 
     def load_config(self):
+        # Load EXIF values
         if 'EXIF' in self.config:
-            for key, entry in self.exif_tags.items():
-                entry.insert(0, self.config['EXIF'].get(key, ''))
+            for key, widget in self.exif_tags.items():
+                if isinstance(widget, ttk.Combobox):
+                    widget.set(self.config['EXIF'].get(key, ''))
+                else:
+                    widget.insert(0, self.config['EXIF'].get(key, ''))
+
+        # Load history for comboboxes
+        if 'History' in self.config:
+            camera_models = self.config['History'].get('camera_models', '').split(',')
+            lens_models = self.config['History'].get('lens_models', '').split(',')
+            
+            self.exif_tags['model']['values'] = [model for model in camera_models if model]
+            self.exif_tags['lensmodel']['values'] = [model for model in lens_models if model]
+        
+        self.update_user_comment()
 
     def save_config(self):
         if 'EXIF' in self.config:
-            for key, entry in self.exif_tags.items():
-                self.config['EXIF'][key] = entry.get()
-        
+            for key, widget in self.exif_tags.items():
+                self.config['EXIF'][key] = widget.get()
+
+        # Save history for comboboxes
+        if 'History' in self.config:
+            # Camera model history
+            current_camera = self.exif_tags['model'].get()
+            camera_history = self.config['History'].get('camera_models', '').split(',')
+            camera_history = [model.strip() for model in camera_history if model]
+            if current_camera and current_camera not in camera_history:
+                camera_history.append(current_camera)
+            self.config['History']['camera_models'] = ','.join(camera_history)
+
+            # Lens model history
+            current_lens = self.exif_tags['lensmodel'].get()
+            lens_history = self.config['History'].get('lens_models', '').split(',')
+            lens_history = [model.strip() for model in lens_history if model]
+            if current_lens and current_lens not in lens_history:
+                lens_history.append(current_lens)
+            self.config['History']['lens_models'] = ','.join(lens_history)
+
         with open(self.config_path, 'w') as configfile:
             self.config.write(configfile)
+
+    def update_user_comment(self, event=None):
+        camera_model = self.exif_tags['model'].get()
+        lens_model = self.exif_tags['lensmodel'].get()
+        
+        if camera_model and lens_model:
+            comment = f"{camera_model} Camera,{lens_model} Lens"
+            user_comment_widget = self.exif_tags.get('usercomment')
+            if user_comment_widget:
+                user_comment_widget.delete(0, tk.END)
+                user_comment_widget.insert(0, comment)
 
     def select_directory(self):
         directory = filedialog.askdirectory()
