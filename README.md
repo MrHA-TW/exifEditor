@@ -1,6 +1,12 @@
 # EXIF Editor
 
-這是一個使用 Python 和 `tkinter` 開發的圖形化介面工具，可以讓您輕鬆編輯圖片檔案的 EXIF 中繼資料。
+A desktop application for editing image EXIF metadata.
+
+## Requirements
+
+- **Tk version:** 9.0 or later.
+
+## Installation
 
 ## 功能
 
