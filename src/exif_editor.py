@@ -6,6 +6,46 @@ import piexif.helper
 import argparse
 import logging
 
+
+def get_exif_summary_from_directory(directory_path, target_extensions):
+    """
+    Scans a directory for images and returns a summary of their EXIF data.
+
+    Args:
+        directory_path (str): The path to the directory to scan.
+        target_extensions (list): A list of file extensions to check.
+
+    Returns:
+        list: A list of dictionaries, each containing info for one file.
+    """
+    summary_data = []
+    for root, _, files in os.walk(directory_path):
+        for file in files:
+            if any(file.lower().endswith(ext.lower()) for ext in target_extensions):
+                image_path = os.path.join(root, file)
+                try:
+                    exif_dict = piexif.load(image_path)
+                    make = exif_dict.get("0th", {}).get(piexif.ImageIFD.Make, b'').decode('utf-8', 'ignore')
+                    model = exif_dict.get("0th", {}).get(piexif.ImageIFD.Model, b'').decode('utf-8', 'ignore')
+                    lens_model = exif_dict.get("Exif", {}).get(piexif.ExifIFD.LensModel, b'').decode('utf-8', 'ignore')
+
+                    summary_data.append({
+                        'filename': file,
+                        'make': make if make else '缺失',
+                        'model': model if model else '缺失',
+                        'lens_model': lens_model if lens_model else '缺失'
+                    })
+                except Exception as e:
+                    logging.warning(f"Could not read EXIF from {image_path}: {e}")
+                    summary_data.append({
+                        'filename': file,
+                        'make': '讀取失敗',
+                        'model': '讀取失敗',
+                        'lens_model': '讀取失敗'
+                    })
+    return summary_data
+
+
 def add_exif_tags_to_file(image_path, config):
     """
     Adds EXIF tags to a single image file based on the provided config.
