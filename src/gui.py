@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, scrolledtext, ttk
 import configparser
 import os
-from exif_editor import process_directory
+from exif_editor import process_directory, get_exif_summary_from_directory
 from cleanup_backups import cleanup_backups
 import threading
 import queue
@@ -11,7 +11,7 @@ class ExifEditorGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("EXIF Editor")
-        self.geometry("600x500")
+        self.geometry("800x600")
 
         self.config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'config.ini')
         self.config = configparser.ConfigParser()
@@ -67,6 +67,22 @@ class ExifEditorGUI(tk.Tk):
         
         dir_button = tk.Button(dir_frame, text="Select Directory", command=self.select_directory)
         dir_button.pack(side="right", padx=5)
+
+        # Frame for EXIF summary
+        summary_frame = tk.LabelFrame(self, text="EXIF Summary", padx=10, pady=10)
+        summary_frame.pack(padx=10, pady=10, fill="both", expand=True)
+
+        self.summary_tree = ttk.Treeview(summary_frame, columns=("filename", "make", "model", "lens_model"), show="headings")
+        self.summary_tree.heading("filename", text="Filename")
+        self.summary_tree.heading("make", text="Make")
+        self.summary_tree.heading("model", text="Model")
+        self.summary_tree.heading("lens_model", text="Lens Model")
+
+        self.summary_tree.column("filename", width=200)
+        self.summary_tree.column("make", width=100)
+        self.summary_tree.column("model", width=150)
+        self.summary_tree.column("lens_model", width=200)
+        self.summary_tree.pack(fill="both", expand=True)
 
         # Frame for actions
         action_frame = tk.Frame(self, padx=10, pady=10)
@@ -146,6 +162,41 @@ class ExifEditorGUI(tk.Tk):
         if directory:
             self.directory_path = directory
             self.dir_label.config(text=directory)
+            self.update_exif_summary()
+
+    def update_exif_summary(self):
+        for i in self.summary_tree.get_children():
+            self.summary_tree.delete(i)
+
+        self.summary_queue = queue.Queue()
+        self.summary_thread = threading.Thread(
+            target=self.run_summary_update,
+            args=(self.directory_path, self.summary_queue)
+        )
+        self.summary_thread.start()
+        self.process_summary_queue()
+
+    def run_summary_update(self, directory_path, q):
+        target_extensions = self.config.get('Settings', 'target_extensions', fallback='.jpg,.jpeg,.tif,.tiff').split(',')
+        summary_data = get_exif_summary_from_directory(directory_path, target_extensions)
+        q.put(summary_data)
+
+    def process_summary_queue(self):
+        try:
+            summary_data = self.summary_queue.get_nowait()
+            for item in summary_data:
+                values = (
+                    item['filename'],
+                                    item.get('make', 'N/A'),
+                                    item.get('model', 'N/A'),
+                                    item.get('lens_model', 'N/A')                )
+                self.summary_tree.insert('', 'end', values=values)
+        except queue.Empty:
+            if self.summary_thread.is_alive():
+                self.after(100, self.process_summary_queue)
+
+
+
 
     def log(self, message):
         self.log_area.config(state='normal')

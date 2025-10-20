@@ -31,10 +31,9 @@ def get_exif_summary_from_directory(directory_path, target_extensions):
 
                     summary_data.append({
                         'filename': file,
-                        'make': make if make else '缺失',
-                        'model': model if model else '缺失',
-                        'lens_model': lens_model if lens_model else '缺失'
-                    })
+                                    'make': make if make else 'N/A',
+                                    'model': model if model else 'N/A',
+                                    'lens_model': lens_model if lens_model else 'N/A'                    })
                 except Exception as e:
                     logging.warning(f"Could not read EXIF from {image_path}: {e}")
                     summary_data.append({
